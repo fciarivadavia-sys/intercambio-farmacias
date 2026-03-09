@@ -23,7 +23,7 @@ export default async function Home() {
               No hay una farmacia autenticada. Primero ingresá con tu cuenta.
             </p>
 
-            {error && (
+            {error && error !== "Auth session missing!" && (
               <div
                 style={{
                   ...styles.error,
