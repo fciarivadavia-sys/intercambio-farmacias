@@ -15,7 +15,6 @@ type SolicitudRecibidaRow = {
     id: string;
     codigo: string | null;
     producto: string;
-    precio_referencia: number | null;
     descuento_pvp: number | null;
   } | null;
   farmacias: {
@@ -38,14 +37,12 @@ type SolicitudRecibidaRaw = {
         id: string;
         codigo: string | null;
         producto: string;
-        precio_referencia: number | null;
         descuento_pvp: number | null;
       }
     | {
         id: string;
         codigo: string | null;
         producto: string;
-        precio_referencia: number | null;
         descuento_pvp: number | null;
       }[]
     | null;
@@ -134,7 +131,6 @@ export default async function SolicitudesRecibidasPage() {
             id,
             codigo,
             producto,
-            precio_referencia,
             descuento_pvp
           ),
           farmacias (
@@ -173,7 +169,6 @@ export default async function SolicitudesRecibidasPage() {
                   id: pub.id,
                   codigo: pub.codigo,
                   producto: pub.producto,
-                  precio_referencia: pub.precio_referencia,
                   descuento_pvp: pub.descuento_pvp,
                 }
               : null,
@@ -231,21 +226,18 @@ export default async function SolicitudesRecibidasPage() {
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
-                      minWidth: "980px",
+                      minWidth: "860px",
                     }}
                   >
                     <thead>
                       <tr style={{ borderBottom: "1px solid #2a3350" }}>
-                        <th style={{ ...thStyle, width: "120px" }}>Cod. barra</th>
-                        <th style={{ ...thStyle, minWidth: "300px" }}>Descripción</th>
-                        <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                        <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                        <th style={{ ...thStyle, minWidth: "320px" }}>Descripción</th>
+                        <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
                           Cantidad
                         </th>
-                        <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                        <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
                           % Descto
-                        </th>
-                        <th style={{ ...thStyle, textAlign: "right", width: "130px" }}>
-                          Precio
                         </th>
                         <th style={{ ...thStyle, minWidth: "180px" }}>Farmacia</th>
                         <th style={{ ...thStyle, minWidth: "120px", textAlign: "center" }}>
@@ -263,9 +255,6 @@ export default async function SolicitudesRecibidasPage() {
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {pub?.descuento_pvp ?? "-"}
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
-                          {formatearPrecio(pub?.precio_referencia ?? null)}
                         </td>
                         <td style={tdStyle}>
                           {farmaciaSolicitante?.id ? (
@@ -318,16 +307,6 @@ export default async function SolicitudesRecibidasPage() {
       )}
     </AppShell>
   );
-}
-
-function formatearPrecio(valor: number | null) {
-  if (valor === null || valor === undefined) return "-";
-
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  }).format(valor);
 }
 
 const thStyle: React.CSSProperties = {

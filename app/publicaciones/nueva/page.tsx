@@ -9,10 +9,8 @@ import { styles } from "../../../src/lib/ui";
 type FormData = {
   codigo: string;
   producto: string;
-  lote: string;
   vencimiento: string;
   cantidad_disponible: string;
-  precio_referencia: string;
   descuento_pvp: string;
   observaciones: string;
 };
@@ -26,10 +24,8 @@ type FarmaciaActual = {
 const initialForm: FormData = {
   codigo: "",
   producto: "",
-  lote: "",
   vencimiento: "",
   cantidad_disponible: "",
-  precio_referencia: "",
   descuento_pvp: "",
   observaciones: "",
 };
@@ -44,6 +40,8 @@ export default function NuevaPublicacionPage() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const [buscandoCodigo, setBuscandoCodigo] = useState(false);
+  const [mensajeCodigo, setMensajeCodigo] = useState("");
 
   useEffect(() => {
     async function cargarFarmaciaActual() {
@@ -85,6 +83,44 @@ export default function NuevaPublicacionPage() {
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "codigo") {
+      setMensajeCodigo("");
+    }
+  }
+
+  async function buscarProductoPorCodigo() {
+    const codigo = form.codigo.trim();
+
+    setMensajeCodigo("");
+
+    if (!codigo) return;
+
+    setBuscandoCodigo(true);
+
+    const { data, error } = await supabase
+      .from("medicamentos_base")
+      .select("nombre")
+      .eq("codigo_barras", codigo)
+      .maybeSingle();
+
+    if (error) {
+      setMensajeCodigo("Error al buscar el código.");
+      setBuscandoCodigo(false);
+      return;
+    }
+
+    if (data?.nombre) {
+      setForm((prev) => ({
+        ...prev,
+        producto: prev.producto.trim() ? prev.producto : data.nombre,
+      }));
+      setMensajeCodigo("Producto encontrado.");
+    } else {
+      setMensajeCodigo("Código no encontrado en la base.");
+    }
+
+    setBuscandoCodigo(false);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -99,11 +135,6 @@ export default function NuevaPublicacionPage() {
 
     if (!form.producto.trim()) {
       setError("El producto es obligatorio.");
-      return;
-    }
-
-    if (!form.lote.trim()) {
-      setError("El lote es obligatorio.");
       return;
     }
 
@@ -125,12 +156,10 @@ export default function NuevaPublicacionPage() {
         farmacia_id: farmacia.id,
         producto: form.producto.trim(),
         codigo: form.codigo.trim() || null,
-        lote: form.lote.trim(),
+        lote: null,
         vencimiento: form.vencimiento,
         cantidad_disponible: cantidad,
-        precio_referencia: form.precio_referencia
-          ? Number(form.precio_referencia)
-          : null,
+        precio_referencia: null,
         descuento_pvp: form.descuento_pvp ? Number(form.descuento_pvp) : null,
         observaciones: form.observaciones.trim() || null,
       };
@@ -144,6 +173,7 @@ export default function NuevaPublicacionPage() {
       }
 
       setMensaje("Publicación guardada correctamente.");
+      setMensajeCodigo("");
       setForm(initialForm);
     } catch (err) {
       const message =
@@ -239,13 +269,43 @@ export default function NuevaPublicacionPage() {
             gap: "18px",
           }}
         >
-          <Field
-            label="Código de barras"
-            name="codigo"
-            value={form.codigo}
-            onChange={handleChange}
-            placeholder="Ej: 7791234567890"
-          />
+          <div>
+            <label htmlFor="codigo" style={styles.label}>
+              Código de barras
+            </label>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <input
+                id="codigo"
+                name="codigo"
+                value={form.codigo}
+                onChange={handleChange}
+                placeholder="Ej: 7791234567890"
+                style={styles.input}
+              />
+              <button
+                type="button"
+                onClick={buscarProductoPorCodigo}
+                disabled={buscandoCodigo}
+                style={buttonSecondaryStyle}
+              >
+                {buscandoCodigo ? "Buscando..." : "Buscar"}
+              </button>
+            </div>
+
+            {mensajeCodigo && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontSize: "13px",
+                  color: mensajeCodigo.includes("encontrado")
+                    ? "#b6f2c8"
+                    : "#aab4d6",
+                }}
+              >
+                {mensajeCodigo}
+              </div>
+            )}
+          </div>
 
           <Field
             label="Producto *"
@@ -253,14 +313,6 @@ export default function NuevaPublicacionPage() {
             value={form.producto}
             onChange={handleChange}
             placeholder="Ej: Amoxicilina 500 mg x 16"
-          />
-
-          <Field
-            label="Lote *"
-            name="lote"
-            value={form.lote}
-            onChange={handleChange}
-            placeholder="Ej: A24B15"
           />
 
           <Field
@@ -278,16 +330,6 @@ export default function NuevaPublicacionPage() {
             value={form.cantidad_disponible}
             onChange={handleChange}
             placeholder="Ej: 5"
-          />
-
-          <Field
-            label="Precio"
-            name="precio_referencia"
-            type="number"
-            step="0.01"
-            value={form.precio_referencia}
-            onChange={handleChange}
-            placeholder="Ej: 12500"
           />
 
           <Field
@@ -355,6 +397,7 @@ export default function NuevaPublicacionPage() {
               setForm(initialForm);
               setMensaje("");
               setError("");
+              setMensajeCodigo("");
             }}
             style={buttonSecondaryStyle}
           >
@@ -419,4 +462,5 @@ const buttonPrimaryStyle: React.CSSProperties = {
 const buttonSecondaryStyle: React.CSSProperties = {
   ...styles.buttonSecondary,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 };

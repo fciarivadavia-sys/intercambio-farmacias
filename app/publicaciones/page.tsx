@@ -3,10 +3,10 @@ import { createClient } from "../../src/lib/supabase-server";
 import { getFarmaciaActual } from "../../src/lib/getFarmaciaActual";
 import AppShell from "../components/AppShell";
 import { styles } from "../../src/lib/ui";
+import EliminarPublicacionButton from "./EliminarPublicacionButton";
 
 type SearchParams = {
   producto?: string;
-  laboratorio?: string;
   estado?: string;
 };
 
@@ -18,7 +18,6 @@ export default async function PublicacionesPage({
   const params = await searchParams;
 
   const producto = params?.producto?.trim() || "";
-  const laboratorio = params?.laboratorio?.trim() || "";
   const estado = params?.estado?.trim() || "";
 
   const { farmacia, user, error: authError } = await getFarmaciaActual();
@@ -68,14 +67,10 @@ export default async function PublicacionesPage({
     .from("publicaciones")
     .select("*")
     .eq("farmacia_id", farmacia.id)
-    .order("created_at", { ascending: false });
+    .order("producto", { ascending: true });
 
   if (producto) {
     query = query.ilike("producto", `%${producto}%`);
-  }
-
-  if (laboratorio) {
-    query = query.ilike("laboratorio", `%${laboratorio}%`);
   }
 
   if (estado) {
@@ -114,7 +109,7 @@ export default async function PublicacionesPage({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr auto",
+            gridTemplateColumns: "1fr 1fr auto",
             gap: "12px",
             alignItems: "end",
           }}
@@ -126,17 +121,6 @@ export default async function PublicacionesPage({
               name="producto"
               defaultValue={producto}
               placeholder="Ej: ibuprofeno"
-              style={styles.input}
-            />
-          </div>
-
-          <div>
-            <label style={styles.label}>Laboratorio</label>
-            <input
-              type="text"
-              name="laboratorio"
-              defaultValue={laboratorio}
-              placeholder="Ej: Bayer"
               style={styles.input}
             />
           </div>
@@ -186,7 +170,7 @@ export default async function PublicacionesPage({
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                minWidth: "760px",
+                minWidth: "860px",
               }}
             >
               <thead>
@@ -195,11 +179,17 @@ export default async function PublicacionesPage({
                     borderBottom: "1px solid #2a3350",
                   }}
                 >
-                  <th style={thStyle}>Cod. barra</th>
-                  <th style={thStyle}>Descripción</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Cantidad</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>% Descto</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Precio</th>
+                  <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                  <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
+                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
+                    Cantidad
+                  </th>
+                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
+                    % Descto
+                  </th>
+                  <th style={{ ...thStyle, textAlign: "center", width: "140px" }}>
+                    Acción
+                  </th>
                 </tr>
               </thead>
 
@@ -219,8 +209,11 @@ export default async function PublicacionesPage({
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       {pub.descuento_pvp ?? "-"}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {formatearPrecio(pub.precio_referencia)}
+                    <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <EliminarPublicacionButton
+                        publicacionId={pub.id}
+                        producto={pub.producto}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -231,16 +224,6 @@ export default async function PublicacionesPage({
       )}
     </AppShell>
   );
-}
-
-function formatearPrecio(valor: number | null) {
-  if (valor === null || valor === undefined) return "-";
-
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  }).format(valor);
 }
 
 const thStyle: React.CSSProperties = {

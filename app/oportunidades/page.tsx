@@ -66,25 +66,20 @@ export default async function OportunidadesPage({
     .select(`
       id,
       producto,
-      laboratorio,
-      presentacion,
       codigo,
-      lote,
-      vencimiento,
       cantidad_disponible,
-      precio_referencia,
       descuento_pvp,
-      observaciones,
       estado,
       farmacia_id,
       farmacias (
+        id,
         nombre,
         localidad,
         provincia
       )
     `)
     .neq("farmacia_id", farmacia.id)
-    .order("vencimiento", { ascending: true });
+    .order("producto", { ascending: true });
 
   if (estado) {
     query = query.eq("estado", estado);
@@ -195,7 +190,7 @@ export default async function OportunidadesPage({
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                minWidth: "980px",
+                minWidth: "920px",
               }}
             >
               <thead>
@@ -204,19 +199,16 @@ export default async function OportunidadesPage({
                     borderBottom: "1px solid #2a3350",
                   }}
                 >
-                  <th style={{ ...thStyle, width: "120px" }}>Cod. barra</th>
-                  <th style={{ ...thStyle, minWidth: "320px" }}>Descripción</th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                  <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                  <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
+                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
                     Cantidad
                   </th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
                     % Descto
                   </th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "130px" }}>
-                    Precio
-                  </th>
                   <th style={{ ...thStyle, minWidth: "180px" }}>Farmacia</th>
-                  <th style={{ ...thStyle, textAlign: "center", width: "130px" }}>
+                  <th style={{ ...thStyle, textAlign: "center", width: "140px" }}>
                     Acción
                   </th>
                 </tr>
@@ -243,10 +235,15 @@ export default async function OportunidadesPage({
                       <td style={{ ...tdStyle, textAlign: "right" }}>
                         {pub.descuento_pvp ?? "-"}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {formatearPrecio(pub.precio_referencia)}
+                      <td style={tdStyle}>
+                        {farmaciaPub?.id ? (
+                          <Link href={`/farmacias/${farmaciaPub.id}`} style={farmaciaLinkStyle}>
+                            {farmaciaPub.nombre}
+                          </Link>
+                        ) : (
+                          farmaciaPub?.nombre || "-"
+                        )}
                       </td>
-                      <td style={tdStyle}>{farmaciaPub?.nombre || "-"}</td>
                       <td style={{ ...tdStyle, textAlign: "center" }}>
                         <Link
                           href={`/oportunidades/${pub.id}/solicitar`}
@@ -265,16 +262,6 @@ export default async function OportunidadesPage({
       )}
     </AppShell>
   );
-}
-
-function formatearPrecio(valor: number | null) {
-  if (valor === null || valor === undefined) return "-";
-
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  }).format(valor);
 }
 
 const thStyle: React.CSSProperties = {
@@ -302,4 +289,10 @@ const actionLinkStyle: React.CSSProperties = {
   ...styles.buttonPrimary,
   padding: "10px 12px",
   fontSize: "13px",
+};
+
+const farmaciaLinkStyle: React.CSSProperties = {
+  color: "#9fb0e8",
+  textDecoration: "none",
+  fontWeight: 600,
 };

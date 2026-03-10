@@ -2,23 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import { createClient } from "../../../../src/lib/supabase-browser";
+import AppShell from "../../../components/AppShell";
+import { styles } from "../../../../src/lib/ui";
 
 type Publicacion = {
   id: string;
   producto: string;
-  laboratorio: string | null;
-  presentacion: string | null;
   codigo: string | null;
-  lote: string;
   vencimiento: string;
   cantidad_disponible: number;
-  precio_referencia: number | null;
   descuento_pvp: number | null;
-  observaciones: string | null;
   estado: string;
   farmacia_id: string;
+  farmacias: {
+    nombre: string;
+  } | null;
 };
 
 type FarmaciaActual = {
@@ -27,30 +26,28 @@ type FarmaciaActual = {
   email: string;
 };
 
-export default function SolicitarPage() {
+export default function SolicitarOportunidadPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = createClient();
-  const params = useParams();
-  const publicacionId = params?.id as string;
 
-  const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [farmaciaActual, setFarmaciaActual] = useState<FarmaciaActual | null>(null);
-  const [cantidad, setCantidad] = useState("");
+  const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
+  const [cantidadSolicitada, setCantidadSolicitada] = useState("");
   const [mensaje, setMensaje] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    async function cargar() {
-      if (!publicacionId) {
-        setError("No se recibió el identificador de la publicación.");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
+    async function cargarDatos() {
+      setCargando(true);
       setError("");
+
+      const resolvedParams = await params;
 
       const {
         data: { user },
@@ -59,7 +56,7 @@ export default function SolicitarPage() {
 
       if (userError || !user) {
         setError("No hay una sesión activa.");
-        setLoading(false);
+        setCargando(false);
         return;
       }
 
@@ -70,339 +67,292 @@ export default function SolicitarPage() {
         .single();
 
       if (farmaciaError || !farmaciaData) {
-        setError("No se pudo encontrar la farmacia autenticada.");
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("publicaciones")
-        .select("*")
-        .eq("id", publicacionId)
-        .single();
-
-      if (error) {
-        setError(`No se pudo cargar la publicación: ${error.message}`);
-        setLoading(false);
+        setError("No se pudo identificar la farmacia actual.");
+        setCargando(false);
         return;
       }
 
       setFarmaciaActual(farmaciaData);
-      setPublicacion(data);
-      setLoading(false);
+
+      const { data: pubData, error: pubError } = await supabase
+        .from("publicaciones")
+        .select(`
+          id,
+          producto,
+          codigo,
+          vencimiento,
+          cantidad_disponible,
+          descuento_pvp,
+          estado,
+          farmacia_id,
+          farmacias (
+            nombre
+          )
+        `)
+        .eq("id", resolvedParams.id)
+        .single();
+
+      if (pubError || !pubData) {
+        setError("No se pudo cargar la publicación.");
+        setCargando(false);
+        return;
+      }
+
+      setPublicacion(pubData as Publicacion);
+      setCargando(false);
     }
 
-    cargar();
-  }, [publicacionId, supabase]);
+    cargarDatos();
+  }, [params, supabase]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setOk("");
 
+    if (!farmaciaActual) {
+      setError("No se pudo identificar la farmacia actual.");
+      return;
+    }
+
     if (!publicacion) {
       setError("No se encontró la publicación.");
       return;
     }
 
-    if (!farmaciaActual) {
-      setError("No hay farmacia autenticada.");
-      return;
-    }
+    const cantidad = Number(cantidadSolicitada);
 
-    if (farmaciaActual.id === publicacion.farmacia_id) {
-      setError("No podés generar una solicitud sobre tu propia publicación.");
-      return;
-    }
-
-    const cantidadNumerica = Number(cantidad);
-
-    if (!cantidad || Number.isNaN(cantidadNumerica) || cantidadNumerica <= 0) {
-      setError("La cantidad solicitada debe ser mayor a 0.");
-      return;
-    }
-
-    if (cantidadNumerica > publicacion.cantidad_disponible) {
-      setError("La cantidad solicitada no puede superar la disponible.");
+    if (!cantidadSolicitada || Number.isNaN(cantidad) || cantidad <= 0) {
+      setError("Ingresá una cantidad válida.");
       return;
     }
 
     setGuardando(true);
 
-    try {
-      const { error: insertError } = await supabase.from("solicitudes").insert([
-        {
-          publicacion_id: publicacion.id,
-          farmacia_solicitante_id: farmaciaActual.id,
-          cantidad_solicitada: cantidadNumerica,
-          mensaje: mensaje.trim() || null,
-          estado: "pendiente",
-        },
-      ]);
+    const { error: insertError } = await supabase.from("solicitudes").insert([
+      {
+        publicacion_id: publicacion.id,
+        farmacia_solicitante_id: farmaciaActual.id,
+        cantidad_solicitada: cantidad,
+        mensaje: mensaje.trim() || null,
+        estado: "pendiente",
+        fecha_solicitud: new Date().toISOString(),
+      },
+    ]);
 
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      setOk("Solicitud enviada correctamente.");
-      setCantidad("");
-      setMensaje("");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Ocurrió un error inesperado.";
-      setError(message);
-    } finally {
+    if (insertError) {
+      setError(insertError.message);
       setGuardando(false);
+      return;
     }
+
+    setOk("Solicitud enviada correctamente.");
+    setCantidadSolicitada("");
+    setMensaje("");
+    setGuardando(false);
   }
 
+  if (cargando) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.card}>Cargando publicación...</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!farmaciaActual || !publicacion) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.container}>
+          <div
+            style={{
+              ...styles.card,
+              maxWidth: "700px",
+              margin: "80px auto 0 auto",
+            }}
+          >
+            <h1 style={styles.title}>Enviar solicitud</h1>
+            <p style={{ ...styles.subtitle, lineHeight: 1.8 }}>
+              No se pudo cargar la publicación.
+            </p>
+
+            {error && <div style={{ ...styles.error, marginTop: "16px" }}>{error}</div>}
+
+            <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+              <Link href="/oportunidades" style={styles.buttonPrimary}>
+                Volver a oportunidades
+              </Link>
+              <Link href="/" style={styles.buttonSecondary}>
+                Volver al panel
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const farmaciaPub = Array.isArray(publicacion.farmacias)
+    ? publicacion.farmacias[0]
+    : publicacion.farmacias;
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0b1020",
-        color: "#ffffff",
-        fontFamily: "Arial, sans-serif",
-        padding: "32px",
-      }}
+    <AppShell
+      farmaciaNombre={farmaciaActual.nombre}
+      titulo="Enviar solicitud"
+      subtitulo="Confirmá el interés en esta publicación"
+      acciones={
+        <>
+          <Link href="/oportunidades" style={styles.buttonPrimary}>
+            Volver a oportunidades
+          </Link>
+          <Link href="/" style={styles.buttonSecondary}>
+            Volver al panel
+          </Link>
+        </>
+      }
     >
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+      <div style={{ ...styles.card, marginBottom: "24px" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: "980px",
+            }}
+          >
+            <thead>
+              <tr style={{ borderBottom: "1px solid #2a3350" }}>
+                <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                <th style={{ ...thStyle, minWidth: "320px" }}>Descripción</th>
+                <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                  Cantidad
+                </th>
+                <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                  % Descto
+                </th>
+                <th style={{ ...thStyle, minWidth: "180px" }}>Farmacia</th>
+                <th style={{ ...thStyle, width: "130px" }}>Vencimiento</th>
+                <th style={{ ...thStyle, textAlign: "center", width: "120px" }}>
+                  Estado
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr style={{ borderBottom: "1px solid #24304f" }}>
+                <td style={tdStyle}>{publicacion.codigo || "-"}</td>
+                <td style={tdStyle}>{publicacion.producto}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>
+                  {publicacion.cantidad_disponible}
+                </td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>
+                  {publicacion.descuento_pvp ?? "-"}
+                </td>
+                <td style={tdStyle}>{farmaciaPub?.nombre || "-"}</td>
+                <td style={tdStyle}>{formatearVencimiento(publicacion.vencimiento)}</td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  <span style={estadoChipStyle}>{publicacion.estado}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} style={styles.card}>
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
+            display: "grid",
+            gridTemplateColumns: "220px 220px auto",
+            gap: "14px",
+            alignItems: "end",
+            marginBottom: "16px",
           }}
         >
           <div>
-            <h1 style={{ margin: 0, fontSize: "34px" }}>Enviar solicitud</h1>
-            <p style={{ marginTop: "8px", color: "#aab4d6" }}>
-              Confirmá el interés en esta publicación
-            </p>
+            <label htmlFor="cantidadSolicitada" style={styles.label}>
+              Cantidad solicitada *
+            </label>
+            <input
+              id="cantidadSolicitada"
+              type="number"
+              value={cantidadSolicitada}
+              onChange={(e) => setCantidadSolicitada(e.target.value)}
+              placeholder="Ej: 2"
+              style={styles.input}
+            />
           </div>
 
-          <Link href="/oportunidades" style={secondaryLinkStyle}>
-            Volver a oportunidades
-          </Link>
+          <button type="submit" disabled={guardando} style={buttonPrimaryStyle}>
+            {guardando ? "Enviando..." : "Enviar solicitud"}
+          </button>
         </div>
 
-        {loading && <div style={cardStyle}>Cargando publicación...</div>}
+        <div style={{ maxWidth: "720px" }}>
+          <label htmlFor="mensaje" style={styles.label}>
+            Mensaje opcional
+          </label>
+          <textarea
+            id="mensaje"
+            value={mensaje}
+            onChange={(e) => setMensaje(e.target.value)}
+            rows={4}
+            placeholder="Escribí un mensaje para la farmacia"
+            style={textareaStyle}
+          />
+        </div>
 
-        {error && !publicacion && (
-          <div
-            style={{
-              ...cardStyle,
-              background: "#3a1010",
-              color: "#ffb9b9",
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        {publicacion && (
-          <>
-            <div style={cardStyle}>
-              <h2 style={{ marginTop: 0, fontSize: "26px" }}>
-                {publicacion.producto}
-              </h2>
-
-              {farmaciaActual && (
-                <p style={{ color: "#9fb0e8", marginTop: "-4px" }}>
-                  Farmacia activa: {farmaciaActual.nombre}
-                </p>
-              )}
-
-              <div style={{ lineHeight: 1.8, color: "#d8e0ff" }}>
-                <p style={{ margin: 0 }}>
-                  <strong>Laboratorio:</strong> {publicacion.laboratorio || "-"}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Presentación:</strong> {publicacion.presentacion || "-"}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Código:</strong> {publicacion.codigo || "-"}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Lote:</strong> {publicacion.lote}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Vencimiento:</strong> {publicacion.vencimiento}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Cantidad disponible:</strong>{" "}
-                  {publicacion.cantidad_disponible}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Precio referencia:</strong>{" "}
-                  {publicacion.precio_referencia ?? "-"}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Descuento PVP:</strong>{" "}
-                  {publicacion.descuento_pvp ?? "-"}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Estado:</strong> {publicacion.estado}
-                </p>
-              </div>
-
-              {publicacion.observaciones && (
-                <div
-                  style={{
-                    marginTop: "14px",
-                    padding: "12px",
-                    background: "#0f1528",
-                    borderRadius: "12px",
-                    border: "1px solid #24304f",
-                    color: "#c8d2f0",
-                  }}
-                >
-                  <strong>Observaciones:</strong> {publicacion.observaciones}
-                </div>
-              )}
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ ...cardStyle, marginTop: "20px" }}>
-              <h3 style={{ marginTop: 0 }}>Datos de la solicitud</h3>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  htmlFor="cantidad"
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontSize: "14px",
-                    color: "#cbd5f2",
-                  }}
-                >
-                  Cantidad solicitada *
-                </label>
-                <input
-                  id="cantidad"
-                  name="cantidad"
-                  type="number"
-                  value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  placeholder="Ej: 2"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="mensaje"
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontSize: "14px",
-                    color: "#cbd5f2",
-                  }}
-                >
-                  Mensaje opcional
-                </label>
-                <textarea
-                  id="mensaje"
-                  name="mensaje"
-                  rows={5}
-                  value={mensaje}
-                  onChange={(e) => setMensaje(e.target.value)}
-                  placeholder="Ej: Me interesa para una necesidad puntual de stock"
-                  style={textareaStyle}
-                />
-              </div>
-
-              {error && (
-                <div
-                  style={{
-                    marginTop: "18px",
-                    background: "#3a1010",
-                    color: "#ffb9b9",
-                    padding: "14px",
-                    borderRadius: "12px",
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-
-              {ok && (
-                <div
-                  style={{
-                    marginTop: "18px",
-                    background: "#10321c",
-                    color: "#b6f2c8",
-                    padding: "14px",
-                    borderRadius: "12px",
-                  }}
-                >
-                  {ok}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                <button type="submit" disabled={guardando} style={primaryButtonStyle}>
-                  {guardando ? "Enviando..." : "Enviar solicitud"}
-                </button>
-
-                <Link href="/oportunidades" style={secondaryLinkStyle}>
-                  Cancelar
-                </Link>
-              </div>
-            </form>
-          </>
-        )}
-      </div>
-    </main>
+        {error && <div style={{ ...styles.error, marginTop: "16px" }}>{error}</div>}
+        {ok && <div style={{ ...styles.success, marginTop: "16px" }}>{ok}</div>}
+      </form>
+    </AppShell>
   );
 }
 
-const cardStyle: React.CSSProperties = {
-  background: "#151b2e",
-  border: "1px solid #2a3350",
-  borderRadius: "18px",
-  padding: "24px",
+function formatearVencimiento(valor: string) {
+  const fecha = new Date(valor);
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const anio = fecha.getFullYear();
+  return `${mes}/${anio}`;
+}
+
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "14px 12px",
+  fontSize: "13px",
+  color: "#aab4d6",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#0f1528",
-  color: "#ffffff",
-  border: "1px solid #2a3350",
-  borderRadius: "10px",
-  padding: "12px 14px",
+const tdStyle: React.CSSProperties = {
+  padding: "14px 12px",
   fontSize: "15px",
-  outline: "none",
+  color: "#ffffff",
+};
+
+const estadoChipStyle: React.CSSProperties = {
+  display: "inline-block",
+  padding: "6px 10px",
+  borderRadius: "999px",
+  border: "1px solid #24304f",
+  background: "#0f1528",
+  color: "#9fb0e8",
+  textTransform: "capitalize",
+  fontSize: "13px",
 };
 
 const textareaStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#0f1528",
-  color: "#ffffff",
-  border: "1px solid #2a3350",
-  borderRadius: "10px",
-  padding: "12px 14px",
-  fontSize: "15px",
-  outline: "none",
+  ...styles.input,
   resize: "vertical",
 };
 
-const primaryButtonStyle: React.CSSProperties = {
-  background: "#4f7cff",
-  color: "#ffffff",
-  border: "none",
-  borderRadius: "10px",
-  padding: "12px 18px",
-  fontSize: "15px",
+const buttonPrimaryStyle: React.CSSProperties = {
+  ...styles.buttonPrimary,
   cursor: "pointer",
-  textDecoration: "none",
-};
-
-const secondaryLinkStyle: React.CSSProperties = {
-  background: "#151b2e",
-  color: "#ffffff",
-  border: "1px solid #2a3350",
-  borderRadius: "10px",
-  padding: "12px 16px",
-  textDecoration: "none",
+  height: "44px",
 };
