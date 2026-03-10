@@ -20,6 +20,25 @@ type Publicacion = {
   } | null;
 };
 
+type PublicacionRaw = {
+  id: string;
+  producto: string;
+  codigo: string | null;
+  vencimiento: string;
+  cantidad_disponible: number;
+  descuento_pvp: number | null;
+  estado: string;
+  farmacia_id: string;
+  farmacias:
+    | {
+        nombre: string;
+      }
+    | {
+        nombre: string;
+      }[]
+    | null;
+};
+
 type FarmaciaActual = {
   id: string;
   nombre: string;
@@ -33,7 +52,9 @@ export default function SolicitarOportunidadPage({
 }) {
   const supabase = createClient();
 
-  const [farmaciaActual, setFarmaciaActual] = useState<FarmaciaActual | null>(null);
+  const [farmaciaActual, setFarmaciaActual] = useState<FarmaciaActual | null>(
+    null
+  );
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [cantidadSolicitada, setCantidadSolicitada] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -98,7 +119,27 @@ export default function SolicitarOportunidadPage({
         return;
       }
 
-      setPublicacion(pubData as Publicacion);
+      const raw = pubData as unknown as PublicacionRaw;
+      const farmaciaPub = Array.isArray(raw.farmacias)
+        ? raw.farmacias[0] ?? null
+        : raw.farmacias;
+
+      setPublicacion({
+        id: raw.id,
+        producto: raw.producto,
+        codigo: raw.codigo,
+        vencimiento: raw.vencimiento,
+        cantidad_disponible: raw.cantidad_disponible,
+        descuento_pvp: raw.descuento_pvp,
+        estado: raw.estado,
+        farmacia_id: raw.farmacia_id,
+        farmacias: farmaciaPub
+          ? {
+              nombre: farmaciaPub.nombre,
+            }
+          : null,
+      });
+
       setCargando(false);
     }
 
@@ -178,7 +219,9 @@ export default function SolicitarOportunidadPage({
               No se pudo cargar la publicación.
             </p>
 
-            {error && <div style={{ ...styles.error, marginTop: "16px" }}>{error}</div>}
+            {error && (
+              <div style={{ ...styles.error, marginTop: "16px" }}>{error}</div>
+            )}
 
             <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
               <Link href="/oportunidades" style={styles.buttonPrimary}>
@@ -194,9 +237,7 @@ export default function SolicitarOportunidadPage({
     );
   }
 
-  const farmaciaPub = Array.isArray(publicacion.farmacias)
-    ? publicacion.farmacias[0]
-    : publicacion.farmacias;
+  const farmaciaPub = publicacion.farmacias;
 
   return (
     <AppShell
@@ -252,7 +293,9 @@ export default function SolicitarOportunidadPage({
                   {publicacion.descuento_pvp ?? "-"}
                 </td>
                 <td style={tdStyle}>{farmaciaPub?.nombre || "-"}</td>
-                <td style={tdStyle}>{formatearVencimiento(publicacion.vencimiento)}</td>
+                <td style={tdStyle}>
+                  {formatearVencimiento(publicacion.vencimiento)}
+                </td>
                 <td style={{ ...tdStyle, textAlign: "center" }}>
                   <span style={estadoChipStyle}>{publicacion.estado}</span>
                 </td>
