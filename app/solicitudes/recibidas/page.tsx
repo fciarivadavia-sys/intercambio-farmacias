@@ -225,12 +225,13 @@ export default async function SolicitudesRecibidasPage() {
                   <table
                     style={{
                       width: "100%",
-                      borderCollapse: "collapse",
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
                       minWidth: "860px",
                     }}
                   >
                     <thead>
-                      <tr style={{ borderBottom: "1px solid #2a3350" }}>
+                      <tr>
                         <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
                         <th style={{ ...thStyle, minWidth: "320px" }}>Descripción</th>
                         <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
@@ -247,14 +248,14 @@ export default async function SolicitudesRecibidasPage() {
                     </thead>
 
                     <tbody>
-                      <tr style={{ borderBottom: "1px solid #24304f" }}>
+                      <tr>
                         <td style={tdStyle}>{pub?.codigo || "-"}</td>
                         <td style={tdStyle}>{pub?.producto || "-"}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           {sol.cantidad_solicitada ?? "-"}
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          {pub?.descuento_pvp ?? "-"}
+                          {formatearDescuento(pub?.descuento_pvp)}
                         </td>
                         <td style={tdStyle}>
                           {farmaciaSolicitante?.id ? (
@@ -309,21 +310,28 @@ export default async function SolicitudesRecibidasPage() {
   );
 }
 
+function formatearDescuento(valor: number | null | undefined) {
+  if (valor === null || valor === undefined) return "-";
+  return String(Math.round(valor));
+}
+
 const thStyle: React.CSSProperties = {
   textAlign: "left",
-  padding: "14px 12px",
+  padding: "12px 12px",
   fontSize: "13px",
   color: "#aab4d6",
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.04em",
+  borderBottom: "1px solid #2a3350",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "14px 12px",
+  padding: "12px 12px",
   fontSize: "15px",
   color: "#ffffff",
   verticalAlign: "middle",
+  borderBottom: "1px solid #24304f",
 };
 
 const estadoChipStyle: React.CSSProperties = {

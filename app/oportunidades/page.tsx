@@ -6,7 +6,6 @@ import { styles } from "../../src/lib/ui";
 
 type SearchParams = {
   producto?: string;
-  laboratorio?: string;
   estado?: string;
 };
 
@@ -18,7 +17,6 @@ export default async function OportunidadesPage({
   const params = await searchParams;
 
   const producto = params?.producto?.trim() || "";
-  const laboratorio = params?.laboratorio?.trim() || "";
   const estado = params?.estado?.trim() || "activa";
 
   const { farmacia, user, error: authError } = await getFarmaciaActual();
@@ -89,10 +87,6 @@ export default async function OportunidadesPage({
     query = query.ilike("producto", `%${producto}%`);
   }
 
-  if (laboratorio) {
-    query = query.ilike("laboratorio", `%${laboratorio}%`);
-  }
-
   const { data: publicaciones, error } = await query;
 
   return (
@@ -111,184 +105,229 @@ export default async function OportunidadesPage({
         </>
       }
     >
-      <form
-        method="GET"
+      <div
         style={{
-          ...styles.card,
-          marginBottom: "24px",
+          display: "grid",
+          gap: "16px",
+          height: "calc(100vh - 220px)",
+          minHeight: "520px",
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Filtros</h3>
-
-        <div
+        <form
+          method="GET"
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr auto",
-            gap: "12px",
-            alignItems: "end",
+            ...styles.card,
+            padding: "14px 18px",
           }}
         >
-          <div>
-            <label style={styles.label}>Producto</label>
-            <input
-              type="text"
-              name="producto"
-              defaultValue={producto}
-              placeholder="Ej: ibuprofeno"
-              style={styles.input}
-            />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 180px auto",
+              gap: "10px",
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <label style={compactLabelStyle}>Producto</label>
+              <input
+                type="text"
+                name="producto"
+                defaultValue={producto}
+                placeholder="Ej: ibuprofeno"
+                style={compactInputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={compactLabelStyle}>Estado</label>
+              <select name="estado" defaultValue={estado} style={compactInputStyle}>
+                <option value="activa">Activa</option>
+                <option value="pausada">Pausada</option>
+                <option value="concretada">Concretada</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button type="submit" style={compactPrimaryButtonStyle}>
+                Filtrar
+              </button>
+              <Link href="/oportunidades" style={compactSecondaryButtonStyle}>
+                Limpiar
+              </Link>
+            </div>
           </div>
+        </form>
 
-          <div>
-            <label style={styles.label}>Laboratorio</label>
-            <input
-              type="text"
-              name="laboratorio"
-              defaultValue={laboratorio}
-              placeholder="Ej: Bayer"
-              style={styles.input}
-            />
+        {error && (
+          <div style={{ ...styles.error }}>
+            Error al cargar oportunidades: {error.message}
           </div>
+        )}
 
-          <div>
-            <label style={styles.label}>Estado</label>
-            <select name="estado" defaultValue={estado} style={styles.input}>
-              <option value="activa">Activa</option>
-              <option value="pausada">Pausada</option>
-              <option value="concretada">Concretada</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
+        {!error && (!publicaciones || publicaciones.length === 0) && (
+          <div style={styles.card}>
+            No hay publicaciones de otras farmacias que coincidan con los filtros.
           </div>
+        )}
 
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button type="submit" style={buttonPrimaryStyle}>
-              Filtrar
-            </button>
-            <Link href="/oportunidades" style={styles.buttonSecondary}>
-              Limpiar
-            </Link>
-          </div>
-        </div>
-      </form>
-
-      {error && (
-        <div style={{ ...styles.error, marginBottom: "20px" }}>
-          Error al cargar oportunidades: {error.message}
-        </div>
-      )}
-
-      {!error && (!publicaciones || publicaciones.length === 0) && (
-        <div style={styles.card}>
-          No hay publicaciones de otras farmacias que coincidan con los filtros.
-        </div>
-      )}
-
-      {publicaciones && publicaciones.length > 0 && (
-        <div style={styles.card}>
-          <div style={{ overflowX: "auto" }}>
-            <table
+        {publicaciones && publicaciones.length > 0 && (
+          <div
+            style={{
+              ...styles.card,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
               style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: "920px",
+                overflowY: "auto",
+                overflowX: "auto",
+                minHeight: 0,
+                flex: 1,
               }}
             >
-              <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid #2a3350",
-                  }}
-                >
-                  <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
-                  <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
-                    Cantidad
-                  </th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
-                    % Descto
-                  </th>
-                  <th style={{ ...thStyle, minWidth: "180px" }}>Farmacia</th>
-                  <th style={{ ...thStyle, textAlign: "center", width: "140px" }}>
-                    Acción
-                  </th>
-                </tr>
-              </thead>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "separate",
+                  borderSpacing: 0,
+                  minWidth: "860px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                    <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
+                    <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                      Cantidad
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                      % Descto
+                    </th>
+                    <th style={{ ...thStyle, minWidth: "180px" }}>Farmacia</th>
+                    <th style={{ ...thStyle, textAlign: "center", width: "130px" }}>
+                      Acción
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {publicaciones.map((pub) => {
-                  const farmaciaPub = Array.isArray(pub.farmacias)
-                    ? pub.farmacias[0]
-                    : pub.farmacias;
+                <tbody>
+                  {publicaciones.map((pub) => {
+                    const farmaciaPub = Array.isArray(pub.farmacias)
+                      ? pub.farmacias[0]
+                      : pub.farmacias;
 
-                  return (
-                    <tr
-                      key={pub.id}
-                      style={{
-                        borderBottom: "1px solid #24304f",
-                      }}
-                    >
-                      <td style={tdStyle}>{pub.codigo || "-"}</td>
-                      <td style={tdStyle}>{pub.producto}</td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {pub.cantidad_disponible ?? "-"}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {pub.descuento_pvp ?? "-"}
-                      </td>
-                      <td style={tdStyle}>
-                        {farmaciaPub?.id ? (
-                          <Link href={`/farmacias/${farmaciaPub.id}`} style={farmaciaLinkStyle}>
-                            {farmaciaPub.nombre}
+                    return (
+                      <tr key={pub.id}>
+                        <td style={tdStyle}>{pub.codigo || "-"}</td>
+                        <td style={tdStyle}>{pub.producto}</td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {pub.cantidad_disponible ?? "-"}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          {formatearDescuento(pub.descuento_pvp)}
+                        </td>
+                        <td style={tdStyle}>
+                          {farmaciaPub?.id ? (
+                            <Link href={`/farmacias/${farmaciaPub.id}`} style={farmaciaLinkStyle}>
+                              {farmaciaPub.nombre}
+                            </Link>
+                          ) : (
+                            farmaciaPub?.nombre || "-"
+                          )}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                          <Link
+                            href={`/oportunidades/${pub.id}/solicitar`}
+                            style={actionLinkStyle}
+                          >
+                            Me interesa
                           </Link>
-                        ) : (
-                          farmaciaPub?.nombre || "-"
-                        )}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
-                        <Link
-                          href={`/oportunidades/${pub.id}/solicitar`}
-                          style={actionLinkStyle}
-                        >
-                          Me interesa
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </AppShell>
   );
 }
 
+function formatearDescuento(valor: number | null) {
+  if (valor === null || valor === undefined) return "-";
+  return String(Math.round(valor));
+}
+
 const thStyle: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+  background: "#151b2e",
   textAlign: "left",
-  padding: "14px 12px",
+  padding: "10px 12px",
   fontSize: "13px",
   color: "#aab4d6",
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.04em",
+  borderBottom: "1px solid #2a3350",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "14px 12px",
+  padding: "10px 12px",
   fontSize: "15px",
   color: "#ffffff",
+  borderBottom: "1px solid #24304f",
 };
 
-const buttonPrimaryStyle: React.CSSProperties = {
+const compactLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "4px",
+  fontSize: "12px",
+  color: "#c8d2f0",
+  fontWeight: 600,
+};
+
+const compactInputStyle: React.CSSProperties = {
+  ...styles.input,
+  padding: "8px 12px",
+  height: "40px",
+};
+
+const compactPrimaryButtonStyle: React.CSSProperties = {
   ...styles.buttonPrimary,
+  height: "40px",
+  padding: "0 14px",
   cursor: "pointer",
 };
 
+const compactSecondaryButtonStyle: React.CSSProperties = {
+  ...styles.buttonSecondary,
+  height: "40px",
+  padding: "0 14px",
+};
+
 const actionLinkStyle: React.CSSProperties = {
-  ...styles.buttonPrimary,
-  padding: "10px 12px",
+  background: "#4f7cff",
+  color: "#ffffff",
+  borderRadius: "10px",
+  padding: "8px 12px",
   fontSize: "13px",
+  fontWeight: 600,
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minWidth: "96px",
 };
 
 const farmaciaLinkStyle: React.CSSProperties = {

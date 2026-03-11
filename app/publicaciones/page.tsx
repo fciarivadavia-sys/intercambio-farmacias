@@ -97,152 +97,188 @@ export default async function PublicacionesPage({
         </>
       }
     >
-      <form
-        method="GET"
+      <div
         style={{
-          ...styles.card,
-          marginBottom: "24px",
+          display: "grid",
+          gap: "16px",
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Filtros</h3>
-
-        <div
+        <form
+          method="GET"
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr auto",
-            gap: "12px",
-            alignItems: "end",
+            ...styles.card,
+            padding: "12px 16px",
           }}
         >
-          <div>
-            <label style={styles.label}>Producto</label>
-            <input
-              type="text"
-              name="producto"
-              defaultValue={producto}
-              placeholder="Ej: ibuprofeno"
-              style={styles.input}
-            />
-          </div>
-
-          <div>
-            <label style={styles.label}>Estado</label>
-            <select name="estado" defaultValue={estado} style={styles.input}>
-              <option value="">Todos</option>
-              <option value="activa">Activa</option>
-              <option value="pausada">Pausada</option>
-              <option value="concretada">Concretada</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button type="submit" style={buttonPrimaryStyle}>
-              Filtrar
-            </button>
-            <Link href="/publicaciones" style={styles.buttonSecondary}>
-              Limpiar
-            </Link>
-          </div>
-        </div>
-      </form>
-
-      {error && (
-        <div style={{ ...styles.error, marginBottom: "20px" }}>
-          {error.message}
-        </div>
-      )}
-
-      {!error && (!publicaciones || publicaciones.length === 0) && (
-        <div style={styles.card}>
-          No hay publicaciones que coincidan con los filtros.
-        </div>
-      )}
-
-      {publicaciones && publicaciones.length > 0 && (
-        <div style={styles.card}>
           <div
             style={{
-              overflowX: "auto",
+              display: "grid",
+              gridTemplateColumns: "1fr 180px auto",
+              gap: "10px",
+              alignItems: "end",
             }}
           >
-            <table
+            <div>
+              <label style={compactLabelStyle}>Producto</label>
+              <input
+                type="text"
+                name="producto"
+                defaultValue={producto}
+                placeholder="Ej: ibuprofeno"
+                style={compactInputStyle}
+              />
+            </div>
+
+            <div>
+              <label style={compactLabelStyle}>Estado</label>
+              <select name="estado" defaultValue={estado} style={compactInputStyle}>
+                <option value="">Todos</option>
+                <option value="activa">Activa</option>
+                <option value="pausada">Pausada</option>
+                <option value="concretada">Concretada</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button type="submit" style={compactPrimaryButtonStyle}>
+                Filtrar
+              </button>
+              <Link href="/publicaciones" style={compactSecondaryButtonStyle}>
+                Limpiar
+              </Link>
+            </div>
+          </div>
+        </form>
+
+        {error && <div style={styles.error}>{error.message}</div>}
+
+        {!error && (!publicaciones || publicaciones.length === 0) && (
+          <div style={styles.card}>
+            No hay publicaciones que coincidan con los filtros.
+          </div>
+        )}
+
+        {publicaciones && publicaciones.length > 0 && (
+          <div
+            style={{
+              ...styles.card,
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
+              maxHeight: "520px",
+            }}
+          >
+            <div
               style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: "860px",
+                overflowY: "auto",
+                overflowX: "auto",
               }}
             >
-              <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid #2a3350",
-                  }}
-                >
-                  <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
-                  <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
-                    Cantidad
-                  </th>
-                  <th style={{ ...thStyle, textAlign: "right", width: "120px" }}>
-                    % Descto
-                  </th>
-                  <th style={{ ...thStyle, textAlign: "center", width: "140px" }}>
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {publicaciones.map((pub) => (
-                  <tr
-                    key={pub.id}
-                    style={{
-                      borderBottom: "1px solid #24304f",
-                    }}
-                  >
-                    <td style={tdStyle}>{pub.codigo || "-"}</td>
-                    <td style={tdStyle}>{pub.producto}</td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {pub.cantidad_disponible ?? "-"}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {pub.descuento_pvp ?? "-"}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <EliminarPublicacionButton
-                        publicacionId={pub.id}
-                        producto={pub.producto}
-                      />
-                    </td>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "separate",
+                  borderSpacing: 0,
+                  minWidth: "860px",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle, width: "180px" }}>Cod. barra</th>
+                    <th style={{ ...thStyle, minWidth: "360px" }}>Descripción</th>
+                    <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                      Cantidad
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right", width: "110px" }}>
+                      % Descto
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "center", width: "140px" }}>
+                      Acción
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {publicaciones.map((pub) => (
+                    <tr key={pub.id}>
+                      <td style={tdStyle}>{pub.codigo || "-"}</td>
+                      <td style={tdStyle}>{pub.producto}</td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {pub.cantidad_disponible ?? "-"}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {formatearDescuento(pub.descuento_pvp)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <EliminarPublicacionButton
+                          publicacionId={pub.id}
+                          producto={pub.producto}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </AppShell>
   );
 }
 
+function formatearDescuento(valor: number | null) {
+  if (valor === null || valor === undefined) return "-";
+  return String(Math.round(valor));
+}
+
 const thStyle: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+  background: "#151b2e",
   textAlign: "left",
-  padding: "14px 12px",
+  padding: "10px 12px",
   fontSize: "13px",
   color: "#aab4d6",
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.04em",
+  borderBottom: "1px solid #2a3350",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "14px 12px",
+  padding: "10px 12px",
   fontSize: "15px",
   color: "#ffffff",
+  borderBottom: "1px solid #24304f",
 };
 
-const buttonPrimaryStyle: React.CSSProperties = {
+const compactLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "4px",
+  fontSize: "12px",
+  color: "#c8d2f0",
+  fontWeight: 600,
+};
+
+const compactInputStyle: React.CSSProperties = {
+  ...styles.input,
+  padding: "8px 12px",
+  height: "40px",
+};
+
+const compactPrimaryButtonStyle: React.CSSProperties = {
   ...styles.buttonPrimary,
+  height: "40px",
+  padding: "0 14px",
   cursor: "pointer",
+};
+
+const compactSecondaryButtonStyle: React.CSSProperties = {
+  ...styles.buttonSecondary,
+  height: "40px",
+  padding: "0 14px",
 };
